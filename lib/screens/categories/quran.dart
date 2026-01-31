@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:islamic_study_app/screens/question_screen.dart';
+import 'package:islamic_study_app/data/quiz_data.dart';
 
 class QuranicKnowledgePage extends StatelessWidget {
   const QuranicKnowledgePage({super.key});
@@ -34,7 +36,7 @@ class QuranicKnowledgePage extends StatelessWidget {
             const SizedBox(height: 25),
 
             // Daily Challenge Card
-            _buildDailyChallengeCard(),
+            _buildDailyChallengeCard(context),
             const SizedBox(height: 25),
 
             // Horizontal Category Chips
@@ -83,7 +85,7 @@ class QuranicKnowledgePage extends StatelessWidget {
     );
   }
 
-  Widget _buildDailyChallengeCard() {
+  Widget _buildDailyChallengeCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -114,7 +116,18 @@ class QuranicKnowledgePage extends StatelessWidget {
             children: [
               const Text("👤👤👤 +40", style: TextStyle(color: Colors.white38)),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Start Challenge Logic
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => QuestionScreen(
+                        categoryName: "Quran",
+                        questions: QuizData.quranQuestions, // Provide relevant questions here
+                      ),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2DC194),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

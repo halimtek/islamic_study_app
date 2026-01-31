@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:islamic_study_app/data/quiz_data.dart';
+import 'package:islamic_study_app/screens/question_screen.dart';
 
 class PillarsOfIslamPage extends StatelessWidget {
   const PillarsOfIslamPage({super.key});
@@ -55,7 +57,7 @@ class PillarsOfIslamPage extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 20),
-              child: _buildShuffleButton(),
+              child: _buildShuffleButton(context),
             ),
           ),
         ],
@@ -165,23 +167,47 @@ class PillarsOfIslamPage extends StatelessWidget {
     );
   }
 
-  Widget _buildShuffleButton() {
-    return Container(
+  Widget _buildShuffleButton(BuildContext context) {
+  return InkWell(
+    onTap: () {
+      // Navigation logic goes here
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QuestionScreen(
+            categoryName: "Pillars of Islam",
+            questions: QuizData.pillarsQuestions,
+          ),
+        ),
+      );
+    },
+    // Adding a borderRadius to InkWell ensures the ripple stays inside the button corners
+    borderRadius: BorderRadius.circular(30),
+    child: Container(
       width: 180,
       height: 55,
       decoration: BoxDecoration(
         color: const Color(0xFF2DC194),
         borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(color: const Color(0xFF2DC194).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2DC194).withOpacity(0.3), 
+            blurRadius: 10, 
+            offset: const Offset(0, 5)
+          )
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: const [
           Icon(Icons.shuffle, color: Colors.black, size: 20),
           SizedBox(width: 10),
-          Text("Shuffle Quiz", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+          Text("Shuffle Quiz", 
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

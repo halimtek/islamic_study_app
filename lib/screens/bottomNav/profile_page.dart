@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'settings_page.dart';
+import '../settings_page.dart';
+import '../../utils/profile_utils.dart';
+import '../../providers/app_state_provider.dart';
+import 'package:provider/provider.dart';
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,6 +32,7 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final appState = Provider.of<AppStateProvider>(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 50, bottom: 30),
@@ -46,7 +50,6 @@ class ProfilePage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.arrow_back, color: Colors.white),
                 const Text(
                   "My Profile",
                   style: TextStyle(
@@ -72,14 +75,14 @@ class ProfilePage extends StatelessWidget {
           const SizedBox(height: 20),
           Stack(
             children: [
-              const CircleAvatar(
+               CircleAvatar(
                 radius: 55,
                 backgroundColor: Colors.amber,
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: NetworkImage(
-                    'https://i.pravatar.cc/150?img=11',
-                  ),
+                  backgroundImage: appState.imageFile != null
+                      ? FileImage(appState.imageFile!) as ImageProvider
+                      : const AssetImage('assets/profile_picture.jpg'),
                 ),
               ),
               Positioned(
@@ -91,14 +94,22 @@ class ProfilePage extends StatelessWidget {
                     color: Color(0xFF26A69A),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                  child: GestureDetector(
+                    onTap: () => ProfileUtils.showEditSheet(context),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 15),
-          const Text(
-            "Yusuf Al-Fayed",
+          Text(
+            // "Abdelhalim Adem",
+            appState.userName,
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -261,9 +272,9 @@ class ProfilePage extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 20),
-          _detailRow(Icons.email, "EMAIL", "yusuf.alfayed@example.com"),
+          _detailRow(Icons.email, "EMAIL", "abdihalim487@gmail.com"),
           const Divider(height: 30),
-          _detailRow(Icons.public, "COUNTRY", "Malaysia"),
+          _detailRow(Icons.public, "COUNTRY", "Ethiopia"),
         ],
       ),
     );

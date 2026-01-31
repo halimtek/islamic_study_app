@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:islamic_study_app/data/quiz_data.dart';
+import 'package:islamic_study_app/screens/question_screen.dart';
 
 class SeerahPage extends StatelessWidget {
   const SeerahPage({super.key});
@@ -87,7 +89,7 @@ class SeerahPage extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 20),
-              child: _buildQuickPlayButton(),
+              child: _buildQuickPlayButton(context),
             ),
           ),
         ],
@@ -225,10 +227,24 @@ class SeerahPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickPlayButton() {
-    return Container(
-      width: 190,
-      height: 55,
+  Widget _buildQuickPlayButton(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        // Navigation logic goes here
+        Navigator.push(
+          context, 
+          MaterialPageRoute(
+            builder: (context) =>  QuestionScreen(
+             categoryName: "Seerah",
+             questions: QuizData.akhlaqQuestions
+            ),
+            ),
+        );
+      },
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        width: 190,
+        height: 55,
       decoration: BoxDecoration(
         color: const Color(0xFF2DC194),
         borderRadius: BorderRadius.circular(30),
@@ -249,6 +265,7 @@ class SeerahPage extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

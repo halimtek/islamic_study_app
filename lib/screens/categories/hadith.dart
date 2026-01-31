@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:islamic_study_app/data/quiz_data.dart';
+import 'package:islamic_study_app/screens/question_screen.dart';
 
 class HadithCollectionsPage extends StatelessWidget {
   const HadithCollectionsPage({super.key});
@@ -58,7 +60,7 @@ class HadithCollectionsPage extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Featured Card: Sunnah in Daily Life
-            _buildFeaturedCard(),
+            _buildFeaturedCard(context),
 
             const SizedBox(height: 30),
 
@@ -94,7 +96,7 @@ class HadithCollectionsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildFeaturedCard() {
+  Widget _buildFeaturedCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -133,7 +135,19 @@ class HadithCollectionsPage extends StatelessWidget {
                 ],
               ),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Start Quiz Action
+                  Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => QuestionScreen(
+                            categoryName: "Hadith",
+                            questions: QuizData
+                                .hadithQuestions, // Passing the specific list
+                          ),
+                        ),
+                      );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF26A69A),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:islamic_study_app/data/quiz_data.dart';
+import 'package:islamic_study_app/screens/question_screen.dart';
 
 class IslamicHistoryPage extends StatelessWidget {
   const IslamicHistoryPage({super.key});
@@ -27,7 +29,7 @@ class IslamicHistoryPage extends StatelessWidget {
             const SizedBox(height: 25),
 
             // 2. Daily Challenge Card (The Life of the Prophet)
-            _buildHistoryHeaderCard(),
+            _buildHistoryHeaderCard(context),
             const SizedBox(height: 30),
 
             // 3. Browse Topics Header
@@ -82,7 +84,7 @@ class IslamicHistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryHeaderCard() {
+  Widget _buildHistoryHeaderCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -120,7 +122,20 @@ class IslamicHistoryPage extends StatelessWidget {
                 ),
               ),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Start Quiz Action
+                 Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => QuestionScreen(
+                            categoryName: "History",
+                            questions: QuizData
+                                .historyQuestions, // Passing the specific list
+                          ),
+                        ),
+                      );
+                  
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1DE9B6),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

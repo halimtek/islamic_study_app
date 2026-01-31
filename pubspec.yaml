@@ -1,7 +1,7 @@
 name: islamic_study_app
 description: "A new Flutter project."
 publish_to: 'none' 
-version: 1.0.0+1
+version: 1.0.0+3
 
 environment:
   sdk: ^3.9.2
@@ -9,9 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  image_picker: ^1.0.7
+  flutter_localizations:
+    sdk: flutter
+    
   flutter_svg: ^2.0.10+1
   flutter_launcher_icons: ^0.14.4
-  
+  provider: ^6.1.1
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
@@ -24,8 +28,12 @@ dev_dependencies:
 flutter:
 
   uses-material-design: true
+  assets:
+  - assets/profile_picture.jpg
 
 flutter_launcher_icons:
   android: 'launcher_icon'
   ios: true
   image_path: "assets/appIcon.png"
+
+   

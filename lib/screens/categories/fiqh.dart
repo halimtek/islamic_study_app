@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:islamic_study_app/data/quiz_data.dart';
+import 'package:islamic_study_app/screens/question_screen.dart';
 
 class FiqhPage extends StatelessWidget {
   const FiqhPage({super.key});
@@ -43,7 +45,7 @@ class FiqhPage extends StatelessWidget {
             
             _buildSearchBar(),
             const SizedBox(height: 25),
-            _buildDailyChallenge(),
+            _buildDailyChallenge(context),
             const SizedBox(height: 30),
 
             Row(
@@ -76,7 +78,7 @@ class FiqhPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDailyChallenge() {
+  Widget _buildDailyChallenge(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -110,7 +112,18 @@ class FiqhPage extends StatelessWidget {
             children: [
               const Text("AK  MS  +12", style: TextStyle(color: Colors.white38, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  // Start challenge logic goes here
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute(
+                      builder: (context) =>  QuestionScreen(
+                       categoryName: "Law",
+                       questions: QuizData.generalQuestions,
+                      )
+                    )
+                  );
+                },
                 icon: const Icon(Icons.play_arrow, color: Colors.black, size: 18),
                 label: const Text("Start", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2DC194), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),

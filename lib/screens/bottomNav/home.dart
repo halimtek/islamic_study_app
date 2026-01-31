@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'history.dart';
-import 'prophets_page.dart';
-import 'daily_duas.dart';
-import 'hadith.dart';
-import 'fiqh.dart';
-import 'pillars.dart';
-import 'quran.dart';
-import 'seerah.dart';
+// import 'package:islamic_study_app/screens/questionscreen.dart';
+// import 'package:islamic_study_app/screens/quizresults.dart';
+import '../categories/history.dart';
+import '../categories/prophets_page.dart';
+import '../categories/daily_duas.dart';
+import '../categories/hadith.dart';
+import '../categories/fiqh.dart';
+import '../categories/pillars.dart';
+import '../categories/quran.dart';
+import '../categories/seerah.dart';
+import '../allcategories.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -107,8 +110,11 @@ class HomePage extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(20),
+                          // to decorate the container
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(
+                            20,
+                          ), //to define the roundness of the container
                         ),
                         child: const Row(
                           children: [
@@ -127,7 +133,9 @@ class HomePage extends StatelessWidget {
                       const SizedBox(width: 12),
                       // FIXED: Used Icon instead of NetworkImage to prevent SocketException
                       CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.1),
+                        backgroundColor: Colors.white.withValues(
+                          alpha: 0.1,
+                        ), // the same as withOpacity(0.1)
                         child: const Icon(Icons.person, color: Colors.white70),
                       ),
                     ],
@@ -170,7 +178,7 @@ class HomePage extends StatelessWidget {
                           ),
                         ),
                         // ADDED: Bookmark and Share Icons
-                        const Row(
+                        Row(
                           children: [
                             Icon(
                               Icons.bookmark_outline,
@@ -238,7 +246,15 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigate to all categories page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AllCategoriesScreen(),
+                        ),
+                      );
+                    },
                     child: const Text(
                       "View All",
                       style: TextStyle(color: Color(0xFF26A69A)),
@@ -262,9 +278,9 @@ class HomePage extends StatelessWidget {
                   childAspectRatio: 1.35,
                 ),
                 itemBuilder: (context, index) {
-                  final cat = categories[index];
+                  final category = categories[index];
                   return CategoryCard(
-                    cat: cat,
+                    category: category,
                   ); // We call a separate stateful widget here
                 },
               ),
@@ -272,15 +288,14 @@ class HomePage extends StatelessWidget {
             ],
           ),
         ),
-      ),  
-        );
-  } 
-  
+      ),
+    );
+  }
 }
 
 class CategoryCard extends StatefulWidget {
-  final Map<String, dynamic> cat;
-  const CategoryCard({super.key, required this.cat});
+  final Map<String, dynamic> category;
+  const CategoryCard({super.key, required this.category});
 
   @override
   State<CategoryCard> createState() => _CategoryCardState();
@@ -288,116 +303,173 @@ class CategoryCard extends StatefulWidget {
 
 class _CategoryCardState extends State<CategoryCard> {
   bool _isHovered = false;
-@override
-Widget build(BuildContext context) {
-  return MouseRegion(
-    onEnter: (_) => setState(() => _isHovered = true),
-    onExit: (_) => setState(() => _isHovered = false),
-    child: GestureDetector(
-      onTap: () {
-        if (widget.cat['name'] == 'Prophets') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProphetsPage()),
-          );
-        }
-        if (widget.cat['name'] == 'Duas') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const DailyDuasPage()),
-          );
-        }
-        if (widget.cat['name'] == 'Quran') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const QuranicKnowledgePage()),
-          );
-         
-        }
-       
-        if (widget.cat['name'] == 'Hadith') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const HadithCollectionsPage()),
-          );
-        }
-        if (widget.cat['name'] == 'History') {
-          
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const IslamicHistoryPage()),
-          );
-        }
-        if (widget.cat['name'] == 'Pillars') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const PillarsOfIslamPage()),
-          );
-          
-        }
-        if (widget.cat['name'] == 'Seerah') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SeerahPage()),
-          );
-          
-        }
-        if (widget.cat['name'] == 'Law') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const FiqhPage()),
-          );
-         
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(10), // Slightly reduced padding
-        decoration: BoxDecoration(
-          color: _isHovered ? const Color(0xFF1A2E2A) : const Color(0xFF132521),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: _isHovered ? const Color(0xFF26A69A).withOpacity(0.5) : Colors.white10,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Added this to prevent stretching
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8), // Smaller icon padding
-                  decoration: BoxDecoration(
-                    color: (widget.cat['color'] as Color).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
+  bool _isNavigating = false; // NEW: Prevents mouse tracking during navigation
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Wrap in IgnorePointer to "hide" the widget from the mouse during navigation
+    return IgnorePointer(
+      ignoring: _isNavigating,
+      child: MouseRegion(
+        onEnter: (_) {
+          // if (!_isNavigating) setState(() => _isHovered = true);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_isNavigating) {
+              setState(() => _isHovered = true);
+            }
+          });
+        },
+        onExit: (_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_isNavigating) {
+              setState(() => _isHovered = false);
+            }
+          });
+          // if (!_isNavigating) setState(() => _isHovered = false);
+        },
+        child: GestureDetector(
+          onTap: () async {
+            // 2. Lock navigation and reset hover look immediately
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _isNavigating = true;
+                  _isHovered = false;
+                });
+              }
+            });
+            // 3. Force the engine to process the "un-hover" before moving away
+            await Future.delayed(Duration(milliseconds: 50));
+            if (!context.mounted) return;
+
+            // 4. Perform Navigation
+            switch (widget.category['name']) {
+              case 'Prophets':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProphetsPage()),
+                );
+                break;
+              case 'Duas':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DailyDuasPage()),
+                );
+                break;
+              case 'Quran':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const QuranicKnowledgePage(),
                   ),
-                  child: Icon(widget.cat['icon'], color: widget.cat['color'], size: 20),
+                );
+                break;
+              case 'Hadith':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const HadithCollectionsPage(),
+                  ),
+                );
+                break;
+              case 'History':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const IslamicHistoryPage()),
+                );
+                break;
+              case 'Pillars':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PillarsOfIslamPage()),
+                );
+                break;
+              case 'Seerah':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SeerahPage()),
+                );
+                break;
+              case 'Law':
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FiqhPage()),
+                );
+                break;
+            }
+
+            // 5. Unlock when user comes back (important for 'back' button)
+            if (mounted) {
+              setState(() => _isNavigating = false);
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? const Color(0xFF1A2E2A)
+                  : const Color(0xFF132521),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: _isHovered
+                    ? const Color(0xFF26A69A).withOpacity(0.5)
+                    : Colors.white10,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (widget.category['color'] as Color).withOpacity(
+                          0.15,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        widget.category['icon'],
+                        color: widget.category['color'],
+                        size: 20,
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: _isHovered
+                          ? const Color(0xFF26A69A)
+                          : Colors.white24,
+                    ),
+                  ],
                 ),
-                Icon(Icons.arrow_forward, 
-                  size: 14, 
-                  color: _isHovered ? const Color(0xFF26A69A) : Colors.white24),
+                const Spacer(),
+                Text(
+                  widget.category['name'],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.category['sub'],
+                  style: const TextStyle(fontSize: 10, color: Colors.white38),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
-            const Spacer(), // Keeps the text at the bottom
-            Text(
-              widget.cat['name'], 
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
-              maxLines: 1, // Prevents text from wrapping to a second line
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              widget.cat['sub'], 
-              style: const TextStyle(fontSize: 10, color: Colors.white38),
-              maxLines: 1, // Prevents subtitle from causing overflow
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}  }
-
+    );
+  }
+}

@@ -93,7 +93,7 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        "Islamic Quiz",
+                        "Welcome Back",
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,

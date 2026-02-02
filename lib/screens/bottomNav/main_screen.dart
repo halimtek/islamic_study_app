@@ -17,9 +17,9 @@ class _MainScreenState extends State<MainScreen> {
   // This list ensures your pages are swapped in the middle
   final List<Widget> _pages = [
     const HomePage(),
-    const ExplorePage(), // This is the "Quiz/Topics" icon
+    const ExplorePage(), 
     const LeaderboardPage(),
-    const ProfilePage(), // Placeholder for 4th tab
+    const ProfilePage(), 
   ];
 
   @override

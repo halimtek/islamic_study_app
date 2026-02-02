@@ -25,21 +25,23 @@ class AppStrings {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // Local state for toggles not yet synced to a database
   bool backgroundNasheed = true;
   bool prayerAlerts = false;
+
+  final Color accentTeal = const Color(0xFF26A69A);
+  final Color darkCard = const Color(0xFF132521);
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppStateProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF081411), // Your deep green
+      backgroundColor: const Color(0xFF0A1A16), // HalimTek Dark Base
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -49,23 +51,23 @@ class _SettingsPageState extends State<SettingsPage> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProfileHeader(appState),
-            const SizedBox(height: 30),
+            const SizedBox(height: 35),
 
             _sectionTitle("PREFERENCES"),
             _buildSettingsGroup([
               _settingsRow(
-                Icons.language,
+                Icons.language_outlined,
                 "Language",
                 trailing: "${appState.currentLanguageDisplayName} >",
                 onTap: () => _showLanguagePicker(context),
               ),
               _settingsSwitch(
-                Icons.dark_mode,
+                Icons.dark_mode_outlined,
                 "Dark Mode",
                 appState.isDarkMode,
                 (v) => appState.toggleTheme(v),
@@ -76,19 +78,19 @@ class _SettingsPageState extends State<SettingsPage> {
             _sectionTitle("AUDIO & VISUAL"),
             _buildSettingsGroup([
               _settingsSwitch(
-                Icons.volume_up,
+                Icons.volume_up_outlined,
                 "Sound Effects",
                 appState.soundEnabled,
                 (v) => appState.toggleSound(v),
               ),
               _settingsSwitch(
-                Icons.music_note,
+                Icons.music_note_outlined,
                 "Background Nasheed",
                 backgroundNasheed,
                 (v) => setState(() => backgroundNasheed = v),
               ),
               _settingsSwitch(
-                Icons.vibration,
+                Icons.vibration_outlined,
                 "Vibration",
                 appState.vibrations,
                 (v) => appState.toggleVibration(v),
@@ -99,13 +101,13 @@ class _SettingsPageState extends State<SettingsPage> {
             _sectionTitle("NOTIFICATIONS"),
             _buildSettingsGroup([
               _settingsSwitch(
-                Icons.notifications_active,
+                Icons.notifications_active_outlined,
                 "Daily Reminders",
-                appState.soundEnabled, // Using sound status as placeholder
+                appState.soundEnabled,
                 (v) => appState.toggleSound(v),
               ),
               _settingsSwitch(
-                Icons.mosque,
+                Icons.mosque_outlined,
                 "Prayer Time Alerts",
                 prayerAlerts,
                 (v) => setState(() => prayerAlerts = v),
@@ -117,33 +119,37 @@ class _SettingsPageState extends State<SettingsPage> {
             _buildSettingsGroup([
               _settingsRow(Icons.help_outline, "Help Center"),
               _settingsRow(Icons.security, "Privacy Policy"),
-              _settingsRow(Icons.logout, "Log Out", color: Colors.redAccent),
+              _settingsRow(Icons.logout_rounded, "Log Out", color: Colors.redAccent),
             ]),
-            const SizedBox(height: 40),
+            const SizedBox(height: 50),
 
             _buildFooter(),
+            const SizedBox(height: 50),
           ],
         ),
       ),
     );
   }
 
-  // --- UI COMPONENTS ---
-
   Widget _buildProfileHeader(AppStateProvider appState) {
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
+        color: darkCard,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white10),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundColor: const Color(0xFFFFD700), // Gold border
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: accentTeal.withOpacity(0.5), width: 2),
+            ),
             child: CircleAvatar(
               radius: 32,
+              backgroundColor: Colors.white10,
               backgroundImage: appState.imageFile != null
                   ? FileImage(appState.imageFile!) as ImageProvider
                   : const AssetImage('assets/profile_picture.jpg'),
@@ -159,31 +165,40 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Colors.white,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   "Level 5 • Scholar",
                   style: TextStyle(
-                    color: Colors.teal.shade700,
+                    color: accentTeal,
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
-          TextButton(
-            onPressed: () => ProfileUtils.showEditSheet(context),
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.teal.withOpacity(0.1),
-              shape: const StadiumBorder(),
-            ),
-            child: const Text(
-              "Edit",
-              style: TextStyle(
-                color: Color(0xFF26A69A),
-                fontWeight: FontWeight.bold,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => ProfileUtils.showEditSheet(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accentTeal.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  "Edit",
+                  style: TextStyle(
+                    color: accentTeal,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
               ),
             ),
           ),
@@ -194,14 +209,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 10, bottom: 10),
+      padding: const EdgeInsets.only(left: 10, bottom: 12),
       child: Text(
         title,
         style: const TextStyle(
-          color: Colors.amber, // Golden accents
+          color: Colors.amber,
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
+          letterSpacing: 1.5,
         ),
       ),
     );
@@ -210,37 +225,53 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildSettingsGroup(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: darkCard,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
       ),
-      child: Column(children: children),
+      child: Column(
+        children: children.asMap().entries.map((entry) {
+          int idx = entry.key;
+          Widget child = entry.value;
+          return Column(
+            children: [
+              child,
+              if (idx != children.length - 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                ),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 
-  Widget _settingsRow(IconData icon, String title, {String? trailing, Color color = Colors.black87, VoidCallback? onTap}) {
+  Widget _settingsRow(IconData icon, String title, {String? trailing, Color color = Colors.white, VoidCallback? onTap}) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(icon, color: Colors.teal.shade400, size: 22),
+      leading: Icon(icon, color: accentTeal, size: 22),
       title: Text(
         title,
         style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 15),
       ),
       trailing: trailing != null
-          ? Text(trailing, style: const TextStyle(color: Colors.teal, fontSize: 14))
-          : const Icon(Icons.chevron_right, color: Colors.grey),
+          ? Text(trailing, style: TextStyle(color: accentTeal, fontSize: 13, fontWeight: FontWeight.bold))
+          : const Icon(Icons.chevron_right, color: Colors.white24, size: 20),
     );
   }
 
   Widget _settingsSwitch(IconData icon, String title, bool value, Function(bool) onChanged) {
     return ListTile(
-      leading: Icon(icon, color: Colors.teal.shade400, size: 22),
+      leading: Icon(icon, color: accentTeal, size: 22),
       title: Text(
         title,
-        style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 15),
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 15),
       ),
       trailing: CupertinoSwitch(
         value: value,
-        activeTrackColor: const Color(0xFF26A69A),
+        activeColor: accentTeal,
         onChanged: onChanged,
       ),
     );
@@ -250,8 +281,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final appState = Provider.of<AppStateProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF081411),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      backgroundColor: const Color(0xFF0A1A16),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
       builder: (context) {
         List<Map<String, String>> languages = [
           {"name": "English", "code": "en"},
@@ -261,13 +292,13 @@ class _SettingsPageState extends State<SettingsPage> {
           {"name": "French", "code": "fr"},
         ];
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
+          padding: const EdgeInsets.symmetric(vertical: 25),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: languages.map((lang) => ListTile(
-              title: Text(lang["name"]!, style: const TextStyle(color: Colors.white)),
+              title: Text(lang["name"]!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
               trailing: appState.locale.languageCode == lang["code"] 
-                  ? const Icon(Icons.check_circle, color: Color(0xFF26A69A)) 
+                  ? Icon(Icons.check_circle, color: accentTeal) 
                   : null,
               onTap: () {
                 appState.setLocale(lang["code"]!);
@@ -283,11 +314,12 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildFooter() {
     return Center(
       child: Column(
-        children: const [
-          Icon(Icons.stars, color: Colors.teal, size: 30),
-          SizedBox(height: 10),
-          Text("Version 1.0.2", style: TextStyle(color: Colors.white38, fontSize: 12)),
-          Text("Made with ♥ for the Ummah", style: TextStyle(color: Colors.white38, fontSize: 10)),
+        children: [
+          Icon(Icons.stars_rounded, color: accentTeal.withOpacity(0.5), size: 35),
+          const SizedBox(height: 15),
+          const Text("Version 1.0.2", style: TextStyle(color: Colors.white24, fontSize: 12)),
+          const SizedBox(height: 5),
+          const Text("Made with ♥ for the Ummah", style: TextStyle(color: Colors.white10, fontSize: 10)),
         ],
       ),
     );

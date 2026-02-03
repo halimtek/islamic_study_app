@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
+
 // Import your category pages
 import '../categories/history.dart';
 import '../categories/prophets_page.dart';
@@ -13,32 +18,87 @@ import '../categories/quran.dart';
 import '../categories/seerah.dart';
 import '../allcategories.dart';
 
+// class QuranService {
+//   static const String _baseUrl = "https://api.quran.com/api/v4";
+
+//   Future<Map<String, dynamic>> fetchAyahOfTheDay() async {
+//     try {
+//       // We request both 131 and 22. If 131 is empty, we use 22.
+//       final response = await http
+//           .get(
+//             Uri.parse(
+//               '$_baseUrl/verses/random?language=en&translations=131,22&fields=text_uthmani',
+//             ),
+//           )
+//           .timeout(const Duration(seconds: 15));
+
+//       if (response.statusCode == 200) {
+//         final data = json.decode(response.body)['verse'];
+
+//         String translationText = "Translation currently unavailable.";
+
+//         // Look through the translations list and take the first one available
+//         if (data['translations'] != null &&
+//             (data['translations'] as List).isNotEmpty) {
+//           translationText = data['translations'][0]['text'];
+//         }
+
+//         return {
+//           'arabic':
+//               data['text_uthmani'] ?? "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+//           'translation': translationText,
+//           'reference': "Surah ${data['verse_key'] ?? '1:1'}",
+//           'url':
+//               "https://quran.com/${data['verse_key']?.replaceAll(':', '/') ?? '1/1'}",
+//         };
+//       }
+//     } catch (e) {
+//       debugPrint("Quran API Error: $e");
+//     }
+//     return {};
+//   }
+// }
+
 class QuranService {
   static const String _baseUrl = "https://api.quran.com/api/v4";
 
   Future<Map<String, dynamic>> fetchAyahOfTheDay() async {
+    final prefs = await SharedPreferences.getInstance();
+
     try {
       final response = await http
           .get(
             Uri.parse(
-              '$_baseUrl/verses/random?language=en&translations=131&fields=text_uthmani',
+              '$_baseUrl/verses/random?language=en&translations=131,22&fields=text_uthmani',
             ),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['verse'];
-        return {
+
+        final ayahMap = {
           'arabic': data['text_uthmani'],
           'translation': data['translations'][0]['text'],
           'reference': "Surah ${data['verse_key']}",
           'url': "https://quran.com/${data['verse_key'].replaceAll(':', '/')}",
         };
+
+        // SAVE to local storage
+        await prefs.setString('cached_ayah', json.encode(ayahMap));
+        return ayahMap;
       }
     } catch (e) {
-      debugPrint("API Error: $e");
+      debugPrint("Offline mode: Loading cached Ayah...");
     }
-    return {};
+
+    // If internet fails, LOAD from local storage
+    String? cachedStr = prefs.getString('cached_ayah');
+    if (cachedStr != null) {
+      return json.decode(cachedStr);
+    }
+
+    return {}; // Absolute fallback
   }
 }
 
@@ -53,14 +113,87 @@ class _HomePageState extends State<HomePage> {
   final QuranService _quranService = QuranService();
 
   // Safety Fix: Initialize here directly to avoid the "Late Initialization" error
-  late Future<Map<String, dynamic>> _ayahFuture = _quranService
-      .fetchAyahOfTheDay();
+  late Future<Map<String, dynamic>> _ayahFuture;
 
   @override
   void initState() {
     super.initState();
-    // We keep this here as well for good measure
+    _loadAyah(); // Use a helper to start the fetch
+  }
+
+  void _loadAyah() {
     _ayahFuture = _quranService.fetchAyahOfTheDay();
+  }
+
+  // Helper function to refresh the data
+  Future<void> _handleRefresh() async {
+    setState(() {
+      // re-assign the future to trigger the FutureBuilder to run again
+      _ayahFuture = _quranService.fetchAyahOfTheDay();
+    });
+
+    // Wait for the future to complete so the loading spinner disappears
+    await _ayahFuture;
+  }
+
+  Widget _buildShimmerLoading() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFF0D4D3B).withOpacity(0.5),
+      highlightColor: const Color(0xFF26A69A).withOpacity(0.2),
+      child: Container(
+        width: double.infinity,
+        height: 220, // Match your Ayah card height
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+    );
+  }
+
+  // bookmark toggle function
+  Future<void> _toggleBookmark(Map<String, dynamic> ayah) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> bookmarks = prefs.getStringList('favourite_ayahs') ?? [];
+
+    // Create a unique ID for the ayah to check if it's already bookmarked
+    String ayahJson = json.encode(ayah);
+    bool isAlreadyBookmarked = bookmarks.contains(ayahJson);
+
+    setState(() {
+      if (isAlreadyBookmarked) {
+        bookmarks.remove(ayahJson);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Removed from Bookmarks"),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      } else {
+        bookmarks.add(ayahJson);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Saved to Bookmarks!"),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    });
+
+    await prefs.setStringList('favourite_ayahs', bookmarks);
+  }
+
+  //
+  // Helper for the pop-up message
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF1A2E2A),
+      ),
+    );
   }
 
   // --- YOUR DATA ---
@@ -119,247 +252,293 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              // --- YOUR ORIGINAL HEADER ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "ASSALAMU ALAIKUM",
-                        style: TextStyle(
-                          color: Color(0xFF26A69A),
-                          fontSize: 11,
-                          letterSpacing: 1.5,
+        child: RefreshIndicator(
+          color: const Color(0xFF26A69A), // Your theme color
+          backgroundColor: const Color(0xFF132521),
+          onRefresh: _handleRefresh, // 2. Call our refresh function
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                // --- YOUR ORIGINAL HEADER ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "ASSALAMU ALAIKUM",
+                          style: TextStyle(
+                            color: Color(0xFF26A69A),
+                            fontSize: 11,
+                            letterSpacing: 1.5,
+                          ),
                         ),
-                      ),
-                      Text(
-                        "Welcome Back",
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        Text(
+                          "Welcome Back",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.local_fire_department,
-                              color: Colors.orange,
-                              size: 16,
-                            ),
-                            Text(
-                              " 12",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.local_fire_department,
+                                color: Colors.orange,
+                                size: 16,
                               ),
-                            ),
-                          ],
+                              Text(
+                                " 12",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        child: const Icon(Icons.person, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                        const SizedBox(width: 12),
+                        CircleAvatar(
+                          backgroundColor: Colors.white.withOpacity(0.1),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
 
-              const SizedBox(height: 25),
+                const SizedBox(height: 25),
 
-              // --- LIVE AYAH CARD (Restored Icons and UI) ---
-              FutureBuilder<Map<String, dynamic>>(
-                future: _ayahFuture,
-                builder: (context, snapshot) {
-                  String arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
-                  String translation =
-                      "In the name of Allah, the Most Gracious, the Most Merciful.";
-                  String reference = "AL-FATIHA 1:1";
-                  String? url;
+                // --- LIVE AYAH CARD (Restored Icons and UI) ---
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _ayahFuture,
+                  builder: (context, snapshot) {
+                    // 1. Initialize with a default value (like your homepage or a fallback)
+                    // Instead of String? url, give it a default so it's never truly null
+                    // SHOW SHIMMER WHILE LOADING
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return _buildShimmerLoading();
+                    }
+                    String currentUrl = "https://quran.com";
 
-                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                    arabic = snapshot.data!['arabic'];
-                    translation = snapshot.data!['translation'].replaceAll(
-                      RegExp(r'<[^>]*>'),
-                      '',
-                    );
-                    reference = snapshot.data!['reference'];
-                    url = snapshot.data!['url'];
-                  }
+                    String arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
+                    String translation =
+                        "In the name of Allah, the Most Gracious, the Most Merciful.";
+                    String reference = "AL-FATIHA 1:1";
 
-                  return GestureDetector(
-                    onTap: () async {
-                      if (url != null) {
-                        final Uri uri = Uri.parse(url);
+                    if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                      arabic = snapshot.data!['arabic'] ?? arabic;
+                      translation =
+                          (snapshot.data!['translation'] ?? translation)
+                              .replaceAll(RegExp(r'<[^>]*>'), '');
+                      reference = snapshot.data!['reference'] ?? reference;
+
+                      // 2. UPDATE the url here when data arrives
+                      currentUrl = snapshot.data!['url'] ?? currentUrl;
+                    }
+
+                    return GestureDetector(
+                      onTap: () async {
+                        // 3. Now the check works because currentUrl is a String
+                        final Uri uri = Uri.parse(currentUrl);
                         if (await canLaunchUrl(uri)) {
                           await launchUrl(
                             uri,
                             mode: LaunchMode.externalApplication,
                           );
                         }
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0D4D3B), Color(0xFF082D24)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0D4D3B), Color(0xFF082D24)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  snapshot.connectionState ==
-                                          ConnectionState.waiting
-                                      ? "Loading..."
-                                      : "Ayah of the Day",
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Color(0xFF26A69A),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
                                   ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    snapshot.connectionState ==
+                                            ConnectionState.waiting
+                                        ? "Loading..."
+                                        : "Ayah of the Day",
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Color(0xFF26A69A),
+                                    ),
+                                  ),
+                                ),
+                                // Bookmark and Share Icons
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () =>
+                                          _toggleBookmark(snapshot.data!),
+                                      icon: Icon(
+                                        Icons.bookmark,
+                                        size: 20,
+                                        // This changes color if data exists (simple logic for now)
+                                        color: snapshot.hasData
+                                            ? const Color(0xFF26A69A)
+                                            : Colors.white54,
+                                      ),
+                                    ),
+                                    SizedBox(width: 15),
+                                    IconButton(
+                                      constraints: const BoxConstraints(),
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(
+                                        Icons.share_outlined,
+                                        size: 20,
+                                        color: Colors.white54,
+                                      ),
+                                      onPressed: () {
+                                        Share.share(
+                                          "$arabic\n\n\"$translation\"\n\n($reference)\nShared via Islamic Study App",
+                                          subject: 'Ayah of the Day',
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 25),
+
+                            GestureDetector(
+                              onLongPress: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: "$arabic\n$translation"),
+                                );
+                                _showToast("Ayah copied to clipboard!");
+                              },
+                              child: Text(
+                                arabic,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'Arabic',
                                 ),
                               ),
-                              // RESTORED: Bookmark and Share Icons
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.bookmark_outline,
-                                    size: 20,
-                                    color: Colors.white54,
-                                  ),
-                                  SizedBox(width: 15),
-                                  Icon(
-                                    Icons.share_outlined,
-                                    size: 20,
-                                    color: Colors.white54,
-                                  ),
-                                ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "\"$translation\"",
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                height: 1.5,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 25),
-                          Text(
-                            arabic,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontFamily: 'Arabic',
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            "\"$translation\"",
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              height: 1.4,
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 15),
+                              child: Divider(
+                                color: Colors.white10,
+                                thickness: 1,
+                              ),
                             ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            child: Divider(color: Colors.white10, thickness: 1),
-                          ),
-                          Text(
-                            reference.toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF26A69A),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                            Text(
+                              reference.toUpperCase(),
+                              style: const TextStyle(
+                                color: Color(0xFF26A69A),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 30),
-
-              // --- CATEGORY TITLE ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Categories",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AllCategoriesScreen(),
-                      ),
-                    ),
-                    child: const Text(
-                      "View All",
-                      style: TextStyle(color: Color(0xFF26A69A)),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: categories.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.35,
+                    );
+                  },
                 ),
-                itemBuilder: (context, index) =>
-                    CategoryCard(category: categories[index]),
-              ),
-              const SizedBox(height: 20),
-            ],
+
+                const SizedBox(height: 30),
+
+                // --- CATEGORY TITLE ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Categories",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AllCategoriesScreen(),
+                        ),
+                      ),
+                      child: const Text(
+                        "View All",
+                        style: TextStyle(color: Color(0xFF26A69A)),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: categories.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.35,
+                  ),
+                  itemBuilder: (context, index) =>
+                      CategoryCard(category: categories[index]),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),

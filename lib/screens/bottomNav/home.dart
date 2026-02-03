@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-// import 'package:islamic_study_app/screens/questionscreen.dart';
-// import 'package:islamic_study_app/screens/quizresults.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+// Import your category pages
 import '../categories/history.dart';
 import '../categories/prophets_page.dart';
 import '../categories/daily_duas.dart';
@@ -11,10 +13,57 @@ import '../categories/quran.dart';
 import '../categories/seerah.dart';
 import '../allcategories.dart';
 
-class HomePage extends StatelessWidget {
+class QuranService {
+  static const String _baseUrl = "https://api.quran.com/api/v4";
+
+  Future<Map<String, dynamic>> fetchAyahOfTheDay() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              '$_baseUrl/verses/random?language=en&translations=131&fields=text_uthmani',
+            ),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body)['verse'];
+        return {
+          'arabic': data['text_uthmani'],
+          'translation': data['translations'][0]['text'],
+          'reference': "Surah ${data['verse_key']}",
+          'url': "https://quran.com/${data['verse_key'].replaceAll(':', '/')}",
+        };
+      }
+    } catch (e) {
+      debugPrint("API Error: $e");
+    }
+    return {};
+  }
+}
+
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
-  // Data for the 8 categories matching your image
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final QuranService _quranService = QuranService();
+
+  // Safety Fix: Initialize here directly to avoid the "Late Initialization" error
+  late Future<Map<String, dynamic>> _ayahFuture = _quranService
+      .fetchAyahOfTheDay();
+
+  @override
+  void initState() {
+    super.initState();
+    // We keep this here as well for good measure
+    _ayahFuture = _quranService.fetchAyahOfTheDay();
+  }
+
+  // --- YOUR DATA ---
   final List<Map<String, dynamic>> categories = const [
     {
       'name': 'Prophets',
@@ -42,7 +91,6 @@ class HomePage extends StatelessWidget {
     },
     {
       'name': 'Pillars',
-      'childIcon': Icons.account_balance,
       'sub': 'Foundation of faith',
       'icon': Icons.home_filled,
       'color': Colors.white70,
@@ -77,7 +125,7 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // --- Header Section ---
+              // --- YOUR ORIGINAL HEADER ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -110,11 +158,8 @@ class HomePage extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          // to decorate the container
-                          color: Colors.white.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(
-                            20,
-                          ), //to define the roundness of the container
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Row(
                           children: [
@@ -125,17 +170,17 @@ class HomePage extends StatelessWidget {
                             ),
                             Text(
                               " 12",
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // FIXED: Used Icon instead of NetworkImage to prevent SocketException
                       CircleAvatar(
-                        backgroundColor: Colors.white.withValues(
-                          alpha: 0.1,
-                        ), // the same as withOpacity(0.1)
+                        backgroundColor: Colors.white.withOpacity(0.1),
                         child: const Icon(Icons.person, color: Colors.white70),
                       ),
                     ],
@@ -144,96 +189,135 @@ class HomePage extends StatelessWidget {
               ),
 
               const SizedBox(height: 25),
-              // --- Ayah Card Section ---
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0D4D3B), Color(0xFF082D24)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
+
+              // --- LIVE AYAH CARD (Restored Icons and UI) ---
+              FutureBuilder<Map<String, dynamic>>(
+                future: _ayahFuture,
+                builder: (context, snapshot) {
+                  String arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
+                  String translation =
+                      "In the name of Allah, the Most Gracious, the Most Merciful.";
+                  String reference = "AL-FATIHA 1:1";
+                  String? url;
+
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    arabic = snapshot.data!['arabic'];
+                    translation = snapshot.data!['translation'].replaceAll(
+                      RegExp(r'<[^>]*>'),
+                      '',
+                    );
+                    reference = snapshot.data!['reference'];
+                    url = snapshot.data!['url'];
+                  }
+
+                  return GestureDetector(
+                    onTap: () async {
+                      if (url != null) {
+                        final Uri uri = Uri.parse(url);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0D4D3B), Color(0xFF082D24)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  snapshot.connectionState ==
+                                          ConnectionState.waiting
+                                      ? "Loading..."
+                                      : "Ayah of the Day",
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF26A69A),
+                                  ),
+                                ),
+                              ),
+                              // RESTORED: Bookmark and Share Icons
+                              const Row(
+                                children: [
+                                  Icon(
+                                    Icons.bookmark_outline,
+                                    size: 20,
+                                    color: Colors.white54,
+                                  ),
+                                  SizedBox(width: 15),
+                                  Icon(
+                                    Icons.share_outlined,
+                                    size: 20,
+                                    color: Colors.white54,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            borderRadius: BorderRadius.circular(8),
+                          const SizedBox(height: 25),
+                          Text(
+                            arabic,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontFamily: 'Arabic',
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          child: const Text(
-                            "Ayah of the Day",
-                            style: TextStyle(
-                              fontSize: 10,
+                          const SizedBox(height: 12),
+                          Text(
+                            "\"$translation\"",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 15),
+                            child: Divider(color: Colors.white10, thickness: 1),
+                          ),
+                          Text(
+                            reference.toUpperCase(),
+                            style: const TextStyle(
                               color: Color(0xFF26A69A),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
-                        ),
-                        // ADDED: Bookmark and Share Icons
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.bookmark_outline,
-                              size: 20,
-                              color: Colors.white54,
-                            ),
-                            SizedBox(width: 15),
-                            Icon(
-                              Icons.share_outlined,
-                              size: 20,
-                              color: Colors.white54,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 25),
-                    const Text(
-                      "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontFamily: 'Arabic',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      "\"In the name of Allah, the Most Gracious, the Most Merciful.\"",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        height: 1.4,
+                        ],
                       ),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      child: Divider(color: Colors.white10, thickness: 1),
-                    ),
-                    const Text(
-                      "AL-FATIHA 1:1",
-                      style: TextStyle(
-                        color: Color(0xFF26A69A),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const SizedBox(height: 30),
-              // --- Categories Title ---
+
+              // --- CATEGORY TITLE ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -246,15 +330,12 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {
-                      // Navigate to all categories page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AllCategoriesScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AllCategoriesScreen(),
+                      ),
+                    ),
                     child: const Text(
                       "View All",
                       style: TextStyle(color: Color(0xFF26A69A)),
@@ -264,7 +345,6 @@ class HomePage extends StatelessWidget {
               ),
 
               const SizedBox(height: 10),
-              // --- 8 Categories Grid ---
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -273,16 +353,10 @@ class HomePage extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  // HIGHER number = SHORTER card
-                  // 1.35 is usually the sweet spot for the look in your screenshot
                   childAspectRatio: 1.35,
                 ),
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  return CategoryCard(
-                    category: category,
-                  ); // We call a separate stateful widget here
-                },
+                itemBuilder: (context, index) =>
+                    CategoryCard(category: categories[index]),
               ),
               const SizedBox(height: 20),
             ],
@@ -293,6 +367,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
+// --- YOUR ORIGINAL CATEGORY CARD ---
 class CategoryCard extends StatefulWidget {
   final Map<String, dynamic> category;
   const CategoryCard({super.key, required this.category});
@@ -303,105 +378,58 @@ class CategoryCard extends StatefulWidget {
 
 class _CategoryCardState extends State<CategoryCard> {
   bool _isHovered = false;
-  bool _isNavigating = false; // NEW: Prevents mouse tracking during navigation
+  bool _isNavigating = false;
 
   @override
   Widget build(BuildContext context) {
-    // 1. Wrap in IgnorePointer to "hide" the widget from the mouse during navigation
     return IgnorePointer(
       ignoring: _isNavigating,
       child: MouseRegion(
-        onEnter: (_) {
-          // if (!_isNavigating) setState(() => _isHovered = true);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_isNavigating) {
-              setState(() => _isHovered = true);
-            }
-          });
-        },
-        onExit: (_) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_isNavigating) {
-              setState(() => _isHovered = false);
-            }
-          });
-          // if (!_isNavigating) setState(() => _isHovered = false);
-        },
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
           onTap: () async {
-            // 2. Lock navigation and reset hover look immediately
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _isNavigating = true;
-                  _isHovered = false;
-                });
-              }
+            setState(() {
+              _isNavigating = true;
+              _isHovered = false;
             });
-            // 3. Force the engine to process the "un-hover" before moving away
-            await Future.delayed(Duration(milliseconds: 50));
+            await Future.delayed(const Duration(milliseconds: 50));
             if (!context.mounted) return;
 
-            // 4. Perform Navigation
+            Widget page;
             switch (widget.category['name']) {
               case 'Prophets':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProphetsPage()),
-                );
+                page = const ProphetsPage();
                 break;
               case 'Duas':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DailyDuasPage()),
-                );
+                page = const DailyDuasPage();
                 break;
               case 'Quran':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const QuranicKnowledgePage(),
-                  ),
-                );
+                page = const QuranicKnowledgePage();
                 break;
               case 'Hadith':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const HadithCollectionsPage(),
-                  ),
-                );
+                page = const HadithCollectionsPage();
                 break;
               case 'History':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const IslamicHistoryPage()),
-                );
+                page = const IslamicHistoryPage();
                 break;
               case 'Pillars':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PillarsOfIslamPage()),
-                );
+                page = const PillarsOfIslamPage();
                 break;
               case 'Seerah':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SeerahPage()),
-                );
+                page = const SeerahPage();
                 break;
               case 'Law':
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FiqhPage()),
-                );
+                page = const FiqhPage();
                 break;
+              default:
+                return;
             }
-
-            // 5. Unlock when user comes back (important for 'back' button)
-            if (mounted) {
-              setState(() => _isNavigating = false);
-            }
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => page),
+            );
+            if (mounted) setState(() => _isNavigating = false);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -419,7 +447,6 @@ class _CategoryCardState extends State<CategoryCard> {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -455,15 +482,11 @@ class _CategoryCardState extends State<CategoryCard> {
                     fontSize: 14,
                     color: Colors.white,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
                 Text(
                   widget.category['sub'],
                   style: const TextStyle(fontSize: 10, color: Colors.white38),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
